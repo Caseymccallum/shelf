@@ -84,3 +84,15 @@ export function parseQuery(input: string): ParsedQuery {
 export function requiredTokens(query: ParsedQuery): string[] {
   return [...new Set([...query.terms, ...query.phrases.flat()])];
 }
+
+/**
+ * The tokens a query requires *of the index*.
+ *
+ * Stop words are never indexed - that is what keeps the index small - so requiring them of it would
+ * make every phrase containing one permanently unsearchable: `"state of the art"` would match
+ * nothing, in any archive, forever. The phrase itself is still verified against the page's own text,
+ * stop words and all, which is where those words actually matter.
+ */
+export function indexableTokens(query: ParsedQuery): string[] {
+  return requiredTokens(query).filter((token) => tokenize(token).length > 0);
+}

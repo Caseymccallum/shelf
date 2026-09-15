@@ -11,7 +11,7 @@
  * serialisable by construction.
  */
 
-import { tokenizeAll, type ParsedQuery } from './tokens';
+import { indexableTokens, tokenizeAll, type ParsedQuery } from './tokens';
 
 /** BM25's term-frequency saturation and length-normalisation constants: the standard defaults. */
 const K1 = 1.2;
@@ -48,7 +48,9 @@ export function rank(
   lengths: DocLengths,
   documentCount: number,
 ): RankedDoc[] {
-  const required = [...new Set([...query.terms, ...query.phrases.flat()])];
+  // Only tokens the index can hold are required of it: a stop word inside a phrase is verified
+  // against the page's text later, not demanded of an index that never contained it.
+  const required = indexableTokens(query);
   if (required.length === 0) return [];
 
   const candidateIds = new Set<string>();
