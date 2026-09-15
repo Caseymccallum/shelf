@@ -1,0 +1,17 @@
+node_modules/
+.output/
+.wxt/
+stats.html
+*.zip
+*.log
+.DS_Store
+.env
+.env.*
+
+# Playwright: traces, screenshots and the HTML report are artefacts of a test run.
+test-results/
+playwright-report/
+
+# Local scratch: command output captured while debugging.
+.tmp/
+.tmp-*

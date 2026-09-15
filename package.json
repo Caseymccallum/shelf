@@ -1,0 +1,36 @@
+{
+  "name": "shelf",
+  "displayName": "Shelf",
+  "description": "Save any page and find it forever. A local-first reading archive - nothing is sent to a server.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "author": "Casey McCallum",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "build:all": "npm run build && npm run build:firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
+    "verify": "npm run compile && npm run test && npm run build",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "jsdom": "^30.0.1",
+    "playwright": "^1.63.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1",
+    "wxt": "^0.21.4"
+  }
+}
