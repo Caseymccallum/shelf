@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shelf — reader</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="reader">
+      <header class="bar">
+        <div class="bar-title">
+          <h1 id="title">Loading…</h1>
+          <p id="meta" class="muted"></p>
+        </div>
+        <div class="bar-actions">
+          <button id="back" class="quiet" type="button">Library</button>
+          <button id="delete" class="danger" type="button">Delete</button>
+        </div>
+      </header>
+
+      <p id="notes" class="notes" role="status" aria-live="polite" hidden></p>
+
+      <!--
+        The saved page lives inside a frame that may not run scripts, may not be treated as this
+        extension's origin, and may not submit anything. `allow-popups` is the one permission it has,
+        so a link in an archived page can open the live site in a new tab while the archive stays.
+      -->
+      <div class="frame-wrap">
+        <iframe
+          id="frame"
+          title="The page as it was saved"
+          sandbox="allow-popups allow-popups-to-escape-sandbox"
+          referrerpolicy="no-referrer"
+        ></iframe>
+      </div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

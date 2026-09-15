@@ -1,0 +1,41 @@
+/*
+ * The popup is one action and one line of feedback, so it is sized to that and nothing more.
+ */
+body {
+  width: 320px;
+}
+
+.popup {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.head h1 {
+  font-size: 17px;
+}
+
+.head p {
+  font-size: 13px;
+}
+
+#save {
+  width: 100%;
+}
+
+.status a {
+  font-weight: 600;
+}
+
+.foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+#summary {
+  font-size: 13px;
+}

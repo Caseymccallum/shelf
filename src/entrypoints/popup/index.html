@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Shelf</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header class="head">
+        <h1>Shelf</h1>
+        <p class="muted">Save this page. Find it forever.</p>
+      </header>
+
+      <button id="save" class="primary" type="button" autofocus>Save this page</button>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <footer class="foot">
+        <p id="summary" class="muted"></p>
+        <button id="open-library" class="quiet" type="button">Open library</button>
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

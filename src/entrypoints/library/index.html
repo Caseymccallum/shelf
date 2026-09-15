@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shelf — your library</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="library">
+      <header class="head">
+        <div>
+          <h1>Your shelf</h1>
+          <p id="stats" class="muted"></p>
+        </div>
+        <button id="refresh" class="quiet" type="button">Refresh</button>
+      </header>
+
+      <input
+        id="query"
+        class="search-input"
+        type="search"
+        placeholder="Search everything you have saved"
+        aria-label="Search everything you have saved"
+        autocomplete="off"
+        autofocus
+      />
+
+      <p id="note" class="muted" role="status" aria-live="polite"></p>
+      <ul id="results" class="results"></ul>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

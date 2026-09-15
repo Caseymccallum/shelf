@@ -134,6 +134,18 @@ export async function archivePage(input: {
   }
 }
 
+/** One page's record, or null when it is not in the archive. */
+export async function getPage(id: string): Promise<SavedPage | null> {
+  const db = await openArchive();
+  try {
+    const tx = db.transaction(STORE_PAGES, 'readonly');
+    const row = await fromRequest<PageRow | undefined>(tx.objectStore(STORE_PAGES).get(id));
+    return row === undefined ? null : toSavedPage(row);
+  } finally {
+    db.close();
+  }
+}
+
 /** One page's content, or null when it is not in the archive. */
 export async function getPageContent(id: string): Promise<PageContent | null> {
   const db = await openArchive();
