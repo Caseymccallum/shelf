@@ -15,6 +15,7 @@
  * format ever changes. Squeezing that out would be an optimisation that makes deletion O(archive).
  */
 
+import type { ArchiveEntry } from '../core/export';
 import { matchesPhrases, rank, snippetFor, type Postings } from '../core/search';
 import { indexableTokens, parseQuery, tokenize } from '../core/tokens';
 import type { PageContent, SavedPage, SearchHit, StatsSummary } from '../core/types';
@@ -340,6 +341,98 @@ export async function archiveStats(): Promise<StatsSummary> {
   } finally {
     db.close();
   }
+}
+
+/**
+ * A slice of the archive with its content, newest first - what an export is made of.
+ *
+ * Sliced rather than returned whole because a library is not guaranteed to fit in one message, and a
+ * slice that fails is a slice that can be asked for again. `nextOffset` counts the *rows walked*
+ * rather than the entries returned, so a row that cannot be exported cannot stall a caller in a loop.
+ *
+ * A page is read here in one piece - record, HTML and text - because that is what a file needs, and
+ * because reading them together is what makes an export a page at a time rather than a full scan.
+ */
+export async function exportSlice(
+  limit: number,
+  offset: number,
+): Promise<{ entries: ArchiveEntry[]; total: number; nextOffset: number }> {
+  const db = await openArchive();
+  try {
+    const pagesTx = db.transaction(STORE_PAGES, 'readonly');
+    const store = pagesTx.objectStore(STORE_PAGES);
+    const total = await fromRequest(store.count());
+    const rows: PageRow[] = [];
+
+    await new Promise<void>((resolve, reject) => {
+      const request = store.index('by-saved-at').openCursor(null, 'prev');
+      let skipped = 0;
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor === null || rows.length >= limit) {
+          resolve();
+          return;
+        }
+        if (skipped < offset) {
+          skipped += 1;
+          cursor.continue();
+          return;
+        }
+        rows.push(cursor.value as PageRow);
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error ?? new Error('Could not read the archive'));
+    });
+
+    const contentTx = db.transaction(STORE_CONTENT, 'readonly');
+    const content = contentTx.objectStore(STORE_CONTENT);
+    const entries: ArchiveEntry[] = [];
+
+    for (const row of rows) {
+      const stored = await fromRequest<PageContent | undefined>(content.get(row.id));
+      // A row whose content is missing has nothing to write into a file. It is left out rather than
+      // invented, and the caller can see the difference between what it walked and what it got, so an
+      // export that is short of pages can say so instead of claiming a count it does not hold.
+      if (stored === undefined) continue;
+      entries.push({ page: toSavedPage(row), html: stored.html, text: row.text });
+    }
+
+    return { entries, total, nextOffset: Math.min(offset + rows.length, total) };
+  } finally {
+    db.close();
+  }
+}
+
+/** What an import did. */
+export interface ImportCounts {
+  /** Entries written to the archive. */
+  added: number;
+  /** Entries that were already there - importing the same file twice is not a duplication. */
+  skipped: number;
+}
+
+/**
+ * Writes entries that came from a file.
+ *
+ * Every entry goes through the same path a save does, which is the point: the index is rebuilt from
+ * the entry's own text rather than trusted from the file, so an export carries no index at all and an
+ * imported page is findable the moment it lands. One entry is one transaction, for the same reason a
+ * save is - there is no state where a page exists and its index entries do not.
+ */
+export async function importPages(entries: readonly ArchiveEntry[]): Promise<ImportCounts> {
+  const counts: ImportCounts = { added: 0, skipped: 0 };
+
+  for (const entry of entries) {
+    const existing = await getPage(entry.page.id);
+    if (existing !== null) {
+      counts.skipped += 1;
+      continue;
+    }
+    await archivePage({ page: entry.page, html: entry.html, text: entry.text });
+    counts.added += 1;
+  }
+
+  return counts;
 }
 
 

@@ -46,7 +46,7 @@ export interface Shelf {
   /** Opens the fixture article in a new tab and waits until its own script has finished with it. */
   openArticle(): Promise<Page>;
   /** Saves whatever is in the active tab, the way the popup's Save button does. */
-  saveActiveTab(options?: { clearLog?: boolean }): Promise<SaveOutcome>;
+  saveActiveTab(options?: { page?: Page; clearLog?: boolean }): Promise<SaveOutcome>;
   /** Sends one request from an extension page. */
   ask<T>(request: unknown): Promise<T>;
   search(query: string): Promise<SearchResponse>;

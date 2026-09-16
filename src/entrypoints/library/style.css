@@ -21,6 +21,27 @@
   font-size: 13px;
 }
 
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/*
+ * The import control is the button; the file input it opens is kept out of sight rather than given
+ * `hidden`, so that it stays a real, focusable control rather than something only script can reach.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .results {
   list-style: none;
   margin: 0;

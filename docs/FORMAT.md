@@ -5,17 +5,18 @@ anything that touches storage, because these are the facts a future version - or
 entirely - has to be able to rely on. A library you cannot lose is only worth having if its contents
 are legible without the program that made them.
 
-## Two versions, and why there are two
+## Three versions, and why there are three
 
 | Version | Where | Changes when |
 | --- | --- | --- |
 | `FORMAT_VERSION` = 1 | `src/core/types.ts`, stored on every record | the *meaning* of a stored row changes: a field added, a field repurposed, a field left empty that used to be filled |
 | `DB_VERSION` = 1 | `src/storage/db.ts`, the IndexedDB schema | the *stores* change: a new object store, a new index, a store removed |
+| `EXPORT_FORMAT` = 1 | `src/core/export.ts`, in the envelope of a file that leaves the browser | the shape of an *exported file* changes: a field added to a record's written form, or a field repurposed there |
 
-They are separate because the two kinds of change are separate. Adding a store does not change what a
-record means, and changing what a record means does not require a new store. A migration that
-conflates them has to be reasoned about twice: once as a schema change and once as a data change, with
-no way to tell which half broke.
+They are separate because the three kinds of change are separate. Adding a store does not change what a
+record means; changing what a record means does not require a new store; and neither is the same thing as
+the shape of a file another program has to read. A migration that conflates them has to be reasoned about
+twice: once as a schema change and once as a data change, with no way to tell which half broke.
 
 The rules that follow from that:
 
@@ -251,17 +252,72 @@ the ones this format does not yet solve:
 - **History is by content, not by time.** Two saves of a changed page are two records; there is no
   timeline within a page, and no diff between versions.
 
-## What an export will contain
+## What an export contains
 
-Not built yet, and written down here because the format has to support it rather than be bent into it
-later.
+One file, `shelf-<date>.json`, holding everything the archive holds and nothing it can derive:
 
-An export is one file holding, for each page, the record's own fields, the archived `html` and the
-`text`, plus the `formatVersion` that wrote it. No index: `postings` is a cache, an importer rebuilds it
-by tokenizing `text`, and shipping a cache in an exported file would create a second source of truth that
-could disagree with the pages it came from.
+```json
+{
+  "kind": "shelf-export",
+  "exportFormat": 1,
+  "formatVersion": 1,
+  "exportedAt": 1757980000000,
+  "count": 2,
+  "pages": [
+    {
+      "page": {
+        "id": "9c1f…", "url": "https://example.com/article", "title": "…", "savedAt": 1757900000000,
+        "bytes": 128394, "wordCount": 1420, "warnings": ["1 embedded frame was not saved"],
+        "formatVersion": 1
+      },
+      "html": "<!doctype html>…",
+      "text": "the visible text, as captured"
+    }
+  ]
+}
+```
 
-That is the reason `text` is stored at all rather than derived on demand, and part of why identity is
-content: an export followed by an import restores the same records under the same ids, so importing the
-same file twice is idempotent rather than a duplication.
+**No index.** `postings` is a cache, an importer rebuilds it by tokenizing `text`, and shipping a cache in
+an exported file would create a second source of truth that could disagree with the pages it came from.
+That is the reason `text` is stored at all rather than derived on demand, and it is half of why identity
+is content: an export followed by an import restores the same records under the same ids, so importing
+the same file twice is idempotent rather than a duplication. Both of those are tested, the second one in
+a real browser against a file on disk.
+
+**Identity is re-derived on import, never taken from the file.** The importer hashes the entry's HTML and
+keys the record by that, and recomputes `bytes` and `wordCount` from the content. What the file is
+trusted for is what only it knows: the address, the title, when the page was saved, and what the capture
+warned about at the time. An entry whose stored `id` does not match its content is imported under the
+identity its content has, and the mismatch is reported - the difference between a format that can be
+repaired and one that has to be believed.
+
+**A newer file is refused by number, a newer field is not.** `exportFormat` above the version this build
+reads is refused with the numbers in the message, because a field whose *meaning* changed cannot be
+detected by looking at fields. Unknown fields are ignored, because adding one does not change what the
+others mean.
+
+**The document is written in fragments.** The page that asked for the export walks the archive itself -
+the worker answers one slice at a time: a header, then runs of entries separated by commas, then the
+tail - so no single message has to carry a library. The fragments are designed to add up to exactly the
+file the one-piece writer would produce, and a unit test compares the two byte for byte. `count` says how
+many pages the archive held when the walk began, so a file that was cut short can be noticed.
+
+### Limits of a transfer, stated
+
+- **An export is assembled in memory.** The file's bytes pass through the library page on their way to a
+  download, so the ceiling is what the browser will hold rather than what the archive can. A streaming
+  export is not built; it would need a way to write a file incrementally that a page does not have
+  without asking for a permission Shelf does not want.
+- **An import is one transaction per entry.** A thousand pages is a thousand small writes: slower than a
+  bulk load, and the same path a save takes, which is what makes the index in it correct.
+- **A page whose content is missing from the archive is left out of the export**, and the export says how
+  many it left out rather than writing a file that quietly holds fewer pages than its own `count` claims.
+- **An export is a snapshot taken a slice at a time.** A page saved while one is running can fall on
+  either side of a slice boundary and appear twice; an import recognises what it already has, so the
+  result is still one library.
+- **Import only adds.** There is no tombstone in the format and no delete-on-import: a file restores what
+  it holds and touches nothing the library has gained since.
+- **`text` is what a re-imported page is searchable by.** A file edited by hand so that its `text` and
+  its `html` disagree produces a page that renders one thing and is found by another; nothing in the
+  format can prevent that, and the export never writes such a file.
 

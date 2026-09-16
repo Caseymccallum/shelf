@@ -37,18 +37,37 @@ test.afterAll(async () => {
  *
  * A saved page's own contents are inline, so anything that is not the reader's own document is the
  * thing these tests exist to catch.
+ *
+ * The reader is brought to the front before anything is asserted, for a reason that is about the test
+ * rather than the product: Chromium holds image work back in a tab that is not visible (the same fact
+ * that makes the harness bring the article forward before capturing it). A reader left in the
+ * background would fetch nothing whether or not the code was right, which would make the "fetches
+ * nothing to show you this" tests pass for a reason that has nothing to do with Shelf, and would make
+ * the one test that asks for files fail for a reason that has nothing to do with Shelf either.
  */
-async function openReader(id: string): Promise<{ reader: Page; external: string[] }> {
+async function openReader(id: string): Promise<{ reader: Page; external: string[]; failed: string[] }> {
   const reader = await shelf.context.newPage();
   const external: string[] = [];
+  /** Requests the browser started and could not complete, which is invisible in the fixture's log. */
+  const failed: string[] = [];
   reader.on('request', (request) => {
     const url = request.url();
     if (!/^(chrome-extension|data|about|blob):/.test(url)) external.push(url);
   });
+  reader.on('requestfailed', (request) => {
+    failed.push(`${request.url()} ${request.failure()?.errorText ?? 'failed'}`);
+  });
 
   await reader.goto(shelf.extensionUrl(`viewer.html?id=${encodeURIComponent(id)}`));
+  await reader.bringToFront();
   await expect(reader.locator('#title')).toHaveText(FIXTURE.title);
-  return { reader, external };
+  // And the archive's own frame has to have rendered before this returns. Two reasons: the reader sets
+  // `srcdoc` twice - the inert copy, then the one with the network allowed back, when a reader asks for
+  // it - and a click that arrives while the first document is still committing is a race the browser
+  // need not resolve in the test's favour. Waiting also makes "fetches nothing" a claim about a page
+  // that is really on screen, rather than about a frame that has not loaded yet.
+  await expect(reader.frameLocator('#frame').locator('h1')).toHaveText(FIXTURE.title);
+  return { reader, external, failed };
 }
 
 test('opens a saved page and fetches nothing at all to show it', async () => {
@@ -101,13 +120,47 @@ test('the page it shows cannot run code, and cannot navigate away', async () => 
   expect(srcdoc).not.toMatch(/http-equiv="refresh"/i);
 });
 
+/**
+ * Waits until the fixture has stopped being asked for things.
+ *
+ * The reader puts every reference back at once, but a browser does not fetch them at once: a stylesheet
+ * in the head is fetched before the images in the body, and a poster after both. An assertion about the
+ * *set* of requests, made as soon as the first one lands, is an assertion about the order the browser
+ * happened to fetch things in - which is what made this test fail roughly one run in six with the
+ * tracker image simply not having arrived yet.
+ */
+async function waitForQuietNetwork(reader: Page): Promise<void> {
+  let previous = -1;
+  await expect
+    .poll(async () => {
+      const current = shelf.site.hitsFromOtherOrigin().length;
+      const quiet = current > 0 && current === previous;
+      previous = current;
+      await reader.waitForTimeout(250);
+      return quiet;
+    })
+    .toBe(true);
+}
+
 test('fetches the missing files only when the reader asks, and only those files', async () => {
-  const { reader } = await openReader(savedId);
+  const { reader, failed } = await openReader(savedId);
   shelf.site.clear();
 
   await reader.getByRole('button', { name: 'Load them from the network' }).click();
   await expect(reader.locator('#notes')).toContainText('this page told other sites you opened it');
-  await expect.poll(() => shelf.site.hitsFromOtherOrigin().length).toBeGreaterThan(0);
+  try {
+    await waitForQuietNetwork(reader);
+  } catch (error) {
+    // A request the browser started and could not finish never reaches the fixture's log, so the two
+    // lists below are the difference between "Shelf did not ask" and "the browser asked and failed" -
+    // which is the difference between a product bug and a test one.
+    const seen = shelf.site.hits().map((hit) => `${hit.host}${hit.path} (${hit.dest})`);
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)}\n` +
+        `requests the browser started and failed: ${failed.join(', ') || 'none'}\n` +
+        `requests the server saw: ${seen.join(', ') || 'none'}`,
+    );
+  }
 
   // Only files that existed as references in the page, and the tracker is among them: that is the cost
   // the reader named before it acted.

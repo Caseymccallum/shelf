@@ -7,8 +7,10 @@ your machine, not on a server - and makes everything you have saved searchable i
   not survive a copy: the rendered DOM, the stylesheets, the images.
 - **Instant local search.** Full text over everything you have saved, ranked, offline.
 - **Read it offline.** Archived pages open in a sandboxed reader: no scripts run, nothing is fetched.
-- **Yours.** No account, no sync service, no telemetry. The archive is exportable as one file.
-- **Pocket refugees welcome.** Importing what you already have is on the roadmap.
+- **Yours.** No account, no sync service, no telemetry. The whole archive exports as one JSON file, and
+  importing that file back is idempotent: the same file twice is the same library, not two.
+- **Pocket refugees welcome.** Importers for other people's formats (Pocket exports, browser bookmarks,
+  SingleFile) are the next piece of work; today the importer takes the files Shelf wrote.
 
 ## Status
 

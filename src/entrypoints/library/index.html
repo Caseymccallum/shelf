@@ -13,8 +13,14 @@
           <h1>Your shelf</h1>
           <p id="stats" class="muted"></p>
         </div>
-        <button id="refresh" class="quiet" type="button">Refresh</button>
+        <div class="head-actions">
+          <button id="export" class="quiet" type="button">Export</button>
+          <button id="import" class="quiet" type="button">Import</button>
+          <button id="refresh" class="quiet" type="button">Refresh</button>
+        </div>
       </header>
+
+      <p id="transfer" class="muted" role="status" aria-live="polite"></p>
 
       <input
         id="query"
@@ -28,6 +34,8 @@
 
       <p id="note" class="muted" role="status" aria-live="polite"></p>
       <ul id="results" class="results"></ul>
+
+      <input id="import-file" class="visually-hidden" type="file" accept="application/json,.json" />
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

@@ -19,16 +19,17 @@ beside it.* Every decision below follows from taking that claim literally.
 3. **A saved page must never execute.** An archive is data. Treating someone else's page as code years
    later is how an archive becomes an attack vector.
 4. **The user must be able to leave.** Anything that cannot be exported is not really owned. So the
-   format stores what an exporter needs (the record, the HTML, the visible text) and treats the index
-   as a cache that can be rebuilt.
+   format stores what an exporter needs (the record, the HTML, the visible text), the index is only ever
+   a cache, and importing the exported file rebuilds it - a claim with a test behind it rather than a
+   promise in a README.
 
 ## The pieces, and why each is a piece
 
 | Module | What it owns | Why it is separate |
 | --- | --- | --- |
-| `src/core` | the record type and `FORMAT_VERSION`, tokenisation, ranking, text extraction | pure functions over plain objects; the same code runs in a unit test, the worker and a UI page |
+| `src/core` | the record type and `FORMAT_VERSION`, the transfer format (`EXPORT_FORMAT`), tokenisation, ranking, text extraction | pure functions over plain objects; the same code runs in a unit test, the worker and a UI page |
 | `src/capture` | the rules for turning a live document into an archive, plus the injection that runs them in a page | the rules are a pure function of a `Document` and a `Fetcher`, so they are provable in jsdom - and the injected shell stays tiny, because it runs in a page nobody controls |
-| `src/entrypoints` | the worker, the injected shell, and the three surfaces | the worker is the only writer; a surface that wrote to the database directly is how an index ends up disagreeing with its pages |
+| `src/entrypoints` | the worker, the injected shell, the three surfaces, and the transfer glue that drives a download and a file input | the worker is the only writer; a surface that wrote to the database directly is how an index ends up disagreeing with its pages |
 | `src/storage/db.ts` | the three object stores, one transaction per save or delete | storage is one file so the invariant "the index agrees with the pages" has one place to be true |
 | `src/ui` | `requireElement`, formatting, and `render-archive.ts` | the reader's preparation is the only code that interprets stored markup, and it is where the second lock lives |
 | `src/shared` | the message vocabulary in `protocol.ts`, the message helper in `messages.ts` | `protocol.ts` imports nothing at all, so the end-to-end harness names the same messages without pulling a browser into Node |
@@ -210,6 +211,34 @@ a test rather than described in a comment.
   The two browsers also type `scripting` differently, which is why the one API the worker uses is declared
   locally rather than imported from either.
 
+### 14. An export is a file, and identity is re-derived on import
+
+*Chosen:* the library page walks the archive through the worker one slice at a time and assembles a single
+JSON document - each record's own fields, the archived HTML, the stored text, and the versions that wrote
+it - then hands it to the browser's own download as a blob. Import parses the file in the page and writes
+it back in batches, because the worker is still the only writer. Neither direction needs a permission
+Shelf does not already ask for.
+
+*Rejected:* building the export in one message, and asking for `downloads` so the worker could write the
+file itself. One message makes the largest possible library the largest possible message, which is a limit
+that arrives as a failure rather than as a shape; a permission is a permanent cost paid for one button.
+
+*Rejected:* believing the `id` in the file. An import hashes each entry's HTML, keys the record by that,
+recomputes `bytes` and `wordCount` from the content, and reports how many entries it had to re-key. A file
+is a claim; the content is the fact - and this is the same rule a save follows, not a second one.
+
+*Rejected:* shipping the index. A `postings` table in a file would be a second source of truth that could
+disagree with the pages it came from, so the importer rebuilds it by tokenizing the stored text. That is
+what makes the promise "an export is the archive" true rather than approximate.
+
+*Cost:* the whole archive passes through the library page's memory on its way to a file or out of one, so
+the export is the one operation whose ceiling is the browser rather than the archive. It is written down
+as a limit in the format document instead of being discovered by whoever hits it.
+
+*Cost:* one entry is one transaction, so importing a thousand pages is a thousand small writes. It is the
+same path a save takes, which is the point: "the index agrees with the pages" has one implementation, and
+it is the one that already has tests.
+
 ## How a change is verified
 
 ```bash
@@ -223,6 +252,7 @@ npm run verify     # compile + test + build: what should pass before a commit
 | If you change | Also change |
 | --- | --- |
 | a stored field's meaning | `FORMAT_VERSION`, and the format document |
+| the shape of an exported file | `EXPORT_FORMAT`, the format document, and the round-trip tests (`src/core/export.test.ts`, `tests/e2e/transfer.spec.ts`) |
 | an object store or an index | `DB_VERSION`, with a migration that can run twice |
 | a message | `protocol.ts`, the worker's `switch`, and a test that sends it |
 | a rule in the reader | `render-archive.ts`, its unit tests, and the reader spec |
@@ -231,9 +261,12 @@ npm run verify     # compile + test + build: what should pass before a commit
 
 ## What is deliberately not built yet
 
-- **Import and export** (Pocket exports, browser bookmarks, SingleFile files). The format is designed for
-  both - identity by content makes a re-import idempotent, and the stored text is what an importer needs
-  to rebuild the index - but neither exists yet.
+- **Importers for other people's files** (Pocket exports, browser bookmarks, SingleFile). What each needs
+  is a reader in front of the same write path - the transfer format and the import that rebuilds the index
+  already exist, and they take Shelf's own files.
+- **A streaming export.** The file is assembled in the library page, so its ceiling is what a browser will
+  hold rather than what the archive can. Writing a file incrementally is not something a page can do
+  without a permission Shelf does not want.
 - **Storing a page's assets once and sharing them** between pages that used the same stylesheet. Today an
   archive duplicates what the page referenced; fixing it is a change to the format, not to the capture.
 - **Sync, accounts, sharing, telemetry.** Not deferred: refused. The product's argument depends on none of

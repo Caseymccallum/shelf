@@ -10,11 +10,22 @@
  */
 
 import { capturePage } from '../capture/capture-lifecycle';
+import {
+  TRANSFER_BATCH_SIZE,
+  exportChunk,
+  exportEnvelope,
+  exportFilename,
+  exportHeader,
+  exportTail,
+  type ArchiveEntry,
+} from '../core/export';
 import { FORMAT_VERSION, type SavedPage } from '../core/types';
 import { tokenize } from '../core/tokens';
 import {
   MSG_DELETE,
+  MSG_EXPORT,
   MSG_GET_PAGE,
+  MSG_IMPORT,
   MSG_LIST,
   MSG_SAVE_ACTIVE_TAB,
   MSG_SEARCH,
@@ -26,8 +37,10 @@ import {
   archivePage,
   archiveStats,
   deletePage,
+  exportSlice,
   getPage,
   getPageContent,
+  importPages,
   listPages,
   searchPages,
 } from '../storage/db';
@@ -51,8 +64,16 @@ function refusalFor(url: string): string | null {
  * changed since last time is a different one worth keeping. 128 bits is far beyond collision
  * territory for an archive and keeps keys and URLs short.
  */
+/** One encoder for the worker, used wherever text becomes bytes. */
+const ENCODER = new TextEncoder();
+
+/** The size of a page's HTML, counted the way a record counts it. */
+function byteLength(html: string): number {
+  return ENCODER.encode(html).length;
+}
+
 async function contentId(html: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(html));
+  const digest = await crypto.subtle.digest('SHA-256', ENCODER.encode(html));
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
@@ -94,7 +115,7 @@ async function saveActiveTab(): Promise<ShelfResponse> {
     url: captured.url,
     title: captured.title,
     savedAt: Date.now(),
-    bytes: new TextEncoder().encode(captured.html).length,
+    bytes: byteLength(captured.html),
     // The count of *indexed* tokens, so it means the same thing to the ranker as it does here.
     wordCount: tokenize(captured.text).length,
     warnings: captured.warnings,
@@ -103,6 +124,61 @@ async function saveActiveTab(): Promise<ShelfResponse> {
 
   await archivePage({ page, html: captured.html, text: captured.text });
   return { type: MSG_SAVE_ACTIVE_TAB, outcome: { status: 'saved', page } };
+}
+
+/**
+ * Hands out one batch of an export file.
+ *
+ * The worker keeps nothing between batches - it holds no state by design - so the caller names the
+ * offset it wants each time. A batch that fails is then simply a batch that can be asked for again.
+ */
+async function exportBatch(offset: number, limit: number): Promise<ShelfResponse> {
+  const { entries, total, nextOffset } = await exportSlice(limit, offset);
+
+  return {
+    type: MSG_EXPORT,
+    // The envelope is written once, by the batch that starts the walk: an export's own timestamp
+    // should be the moment it began, not the moment each piece of it was assembled.
+    header: offset === 0 ? exportHeader(exportEnvelope(total)) : '',
+    chunk: exportChunk(entries),
+    entries: entries.length,
+    tail: nextOffset >= total ? exportTail() : '',
+    nextOffset,
+    total,
+    filename: exportFilename(),
+  };
+}
+
+/**
+ * Writes pages that came from a file.
+ *
+ * Identity is derived from the content here rather than taken from the file, which is the same rule a
+ * save follows, and so are the two numbers derived from the content - so a file cannot make the
+ * library describe a page incorrectly. What the file *is* trusted for is what only it knows: the
+ * address, the title, when the page was saved, and what the capture warned about at the time.
+ */
+async function importBatch(entries: readonly ArchiveEntry[]): Promise<ShelfResponse> {
+  const prepared: ArchiveEntry[] = [];
+  let rekeyed = 0;
+
+  for (const entry of entries) {
+    const id = await contentId(entry.html);
+    if (id !== entry.page.id) rekeyed += 1;
+
+    prepared.push({
+      html: entry.html,
+      text: entry.text,
+      page: {
+        ...entry.page,
+        id,
+        bytes: byteLength(entry.html),
+        wordCount: tokenize(entry.text).length,
+      },
+    });
+  }
+
+  const counts = await importPages(prepared);
+  return { type: MSG_IMPORT, added: counts.added, skipped: counts.skipped, rekeyed };
 }
 
 /** Answers one message. Written as a lookup rather than chained conditionals, so adding a message
@@ -136,6 +212,12 @@ async function handle(request: ShelfRequest): Promise<ShelfResponse> {
 
     case MSG_STATS:
       return { type: MSG_STATS, stats: await archiveStats() };
+
+    case MSG_EXPORT:
+      return exportBatch(request.offset ?? 0, request.limit ?? TRANSFER_BATCH_SIZE);
+
+    case MSG_IMPORT:
+      return importBatch(request.entries);
   }
 }
 

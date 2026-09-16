@@ -17,6 +17,7 @@ import {
 } from '../../shared/messages';
 import { formatBytes, formatCount } from '../../ui/format';
 import { emptyRow, renderRow } from './rows';
+import { downloadArchive, importArchive } from './transfer';
 import '../../ui/theme.css';
 import './style.css';
 
@@ -27,6 +28,10 @@ const results = requireElement<HTMLUListElement>('#results');
 const note = requireElement<HTMLParagraphElement>('#note');
 const stats = requireElement<HTMLParagraphElement>('#stats');
 const refresh = requireElement<HTMLButtonElement>('#refresh');
+const transfer = requireElement<HTMLParagraphElement>('#transfer');
+const exportButton = requireElement<HTMLButtonElement>('#export');
+const importButton = requireElement<HTMLButtonElement>('#import');
+const importFile = requireElement<HTMLInputElement>('#import-file');
 
 const NOTHING_SAVED =
   'Nothing saved yet. Open a page and click Shelf in your toolbar — the page is saved into this browser, never to a server.';
@@ -75,5 +80,44 @@ queryInput.addEventListener('keydown', (event) => {
 });
 
 refresh.addEventListener('click', () => void refreshAll());
+
+/**
+ * Runs one transfer, with its button disabled and what happened left on the line under the header.
+ *
+ * The archive is re-read afterwards whatever the outcome. An import that added nothing still happened,
+ * and a screen that has to be refreshed by hand after an action is a screen that is wrong about the
+ * archive until somebody does it.
+ */
+async function runTransfer(button: HTMLButtonElement, action: () => Promise<string>): Promise<void> {
+  button.disabled = true;
+  transfer.textContent = 'Working…';
+  try {
+    transfer.textContent = await action();
+  } catch (error) {
+    transfer.textContent = error instanceof Error ? error.message : String(error);
+  } finally {
+    button.disabled = false;
+    await refreshAll();
+  }
+}
+
+exportButton.addEventListener('click', () => void runTransfer(exportButton, downloadArchive));
+
+// The file input is the control that can do this; the button is what a person sees.
+importButton.addEventListener('click', () => importFile.click());
+
+importFile.addEventListener('change', () => {
+  const file = importFile.files?.[0];
+  // Cleared before the file is read, so that choosing the same file twice is two imports: an input that
+  // still holds a file fires no `change` event for it.
+  importFile.value = '';
+  if (file === undefined) return;
+
+  void runTransfer(importButton, () =>
+    importArchive(file, (done, total) => {
+      transfer.textContent = `Importing ${done} of ${total}…`;
+    }),
+  );
+});
 
 void refreshAll();
