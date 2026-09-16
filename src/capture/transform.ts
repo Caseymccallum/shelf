@@ -71,8 +71,15 @@ function absolutiseCss(css: string, base: string): string {
   });
 }
 
-/** Removes everything executable from a copied document. */
-export function stripExecutable(copy: HTMLElement): void {
+/**
+ * Removes everything executable from a copied document, and reports how many embedded frames it had
+ * to give up on.
+ *
+ * The count is returned rather than pushed into a warnings list here, because this function is also
+ * used on its own in tests, and because a warning belongs to the capture's summary rather than to one
+ * of its passes.
+ */
+export function stripExecutable(copy: HTMLElement): number {
   for (const tag of DROPPED_ELEMENTS) {
     for (const element of Array.from(copy.querySelectorAll(tag))) element.remove();
   }
@@ -97,14 +104,19 @@ export function stripExecutable(copy: HTMLElement): void {
   }
 
   // Embedded frames belong to another page at another address. Copying their contents in would put
-  // someone else's document inside this archive under this page's address, so they are replaced
-  // with a marker that says exactly what is missing.
+  // someone else's document inside this archive under this page's address, so they are replaced with a
+  // marker that says exactly what is missing - and counted, because a marker inside a page is easy to
+  // scroll past, while "a frame was not saved" in the summary is not.
+  let skippedFrames = 0;
   for (const frame of Array.from(copy.querySelectorAll('frame, iframe'))) {
     const marker = copy.ownerDocument.createElement('div');
     marker.setAttribute('data-shelf-skipped-frame', frame.getAttribute('src') ?? '');
     marker.textContent = '[embedded frame not saved]';
     frame.replaceWith(marker);
+    skippedFrames += 1;
   }
+
+  return skippedFrames;
 }
 
 /**
@@ -411,7 +423,12 @@ export async function captureDocument(
   // anything that edits the copy first (removing elements, replacing frames) breaks the pairing.
   snapshotCanvases(doc, copy, state.warnings);
   flattenShadowRoots(doc.documentElement, copy, doc);
-  stripExecutable(copy);
+  const skippedFrames = stripExecutable(copy);
+  if (skippedFrames > 0) {
+    state.warnings.push(
+      `${skippedFrames} embedded frame${skippedFrames === 1 ? '' : 's'} ${skippedFrames === 1 ? 'was' : 'were'} not saved, so anything inside ${skippedFrames === 1 ? 'it' : 'them'} is missing.`,
+    );
+  }
   absolutiseUrls(copy, pageUrl);
 
   if (options.inlineResources !== false) {

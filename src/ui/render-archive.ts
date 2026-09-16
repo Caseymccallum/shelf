@@ -93,6 +93,20 @@ export function prepareArchiveForReading(html: string, options: { allowRemote?: 
   policy.setAttribute('content', options.allowRemote === true ? READER_CSP_WITH_REMOTE : READER_CSP);
   doc.head.prepend(policy);
 
+  // Anything that can move the reader goes before the page is rendered.
+  //
+  // The policy above covers `base`, forms and everything executable - but it does *not* cover a
+  // `<meta http-equiv="refresh">`, which navigates the frame itself. An archive that can navigate
+  // itself is an archive that can turn into the live page while someone believes they are reading
+  // yesterday's copy. This runs on markup that Shelf did not necessarily write (an archive from an
+  // older version, a file someone imported), which is the whole reason the reader does not simply
+  // trust the capture to have removed it. Only refresh is removed: a `charset` still governs how the
+  // page renders, and dropping it would change what the reader sees.
+  for (const meta of Array.from(doc.querySelectorAll('meta[http-equiv]'))) {
+    const directive = (meta.getAttribute('http-equiv') ?? '').toLowerCase().trim();
+    if (directive === 'refresh') meta.remove();
+  }
+
   for (const anchor of Array.from(doc.querySelectorAll('a[href]'))) {
     if (!/^https?:/i.test(anchor.getAttribute('href') ?? '')) continue;
     anchor.setAttribute('target', '_blank');

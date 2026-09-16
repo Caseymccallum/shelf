@@ -47,10 +47,15 @@ describe('stripExecutable', () => {
 
   test('replaces an embedded frame with a marker naming what is missing', () => {
     const copy = copyOf('<iframe src="https://widgets.other.test/embed"></iframe>');
-    stripExecutable(copy);
+    expect(stripExecutable(copy)).toBe(1);
     const marker = copy.querySelector('[data-shelf-skipped-frame]');
     expect(marker?.getAttribute('data-shelf-skipped-frame')).toBe('https://widgets.other.test/embed');
     expect(marker?.textContent).toBe('[embedded frame not saved]');
+  });
+
+  test('counts every frame it gave up on, because a marker is easy to scroll past', () => {
+    const copy = copyOf('<iframe src="https://a.test/1"></iframe><iframe srcdoc="<p>x</p>"></iframe>');
+    expect(stripExecutable(copy)).toBe(2);
   });
 
   test('drops links that are not stylesheets, because they fetch while a document parses', () => {

@@ -65,6 +65,26 @@ describe('prepareArchiveForReading', () => {
     expect(fragment?.hasAttribute('target')).toBe(false);
   });
 
+  test('removes a refresh that would navigate the reader away from the archive', () => {
+    // The policy forbids the network, but it does not stop a document navigating itself - so an
+    // archive that kept this could turn into the live page under the reader's feet. Only `refresh` is
+    // removed; the policy itself is an `http-equiv` meta and has to stay.
+    const prepared = prepareArchiveForReading(
+      '<!doctype html><html><head><meta http-equiv="refresh" content="0;url=https://live.test/article"></head><body>saved</body></html>',
+    );
+    expect(prepared).not.toMatch(/http-equiv="refresh"/i);
+    expect(prepared).not.toContain('live.test');
+    expect(prepared).toContain('Content-Security-Policy');
+    expect(prepared).toContain('saved');
+  });
+
+  test('keeps a charset, because the encoding changes how the page renders', () => {
+    const prepared = prepareArchiveForReading(
+      '<!doctype html><html><head><meta charset="utf-8"></head><body>saved</body></html>',
+    );
+    expect(prepared).toContain('charset="utf-8"');
+  });
+
   test('keeps the page that was saved, byte for byte, apart from the policy and the links', () => {
     const prepared = prepareArchiveForReading(ARCHIVE);
     expect(prepared).toContain('Kept text.');
