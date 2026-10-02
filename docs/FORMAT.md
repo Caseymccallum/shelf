@@ -254,7 +254,8 @@ the ones this format does not yet solve:
 
 ## What an export contains
 
-One file, `shelf-<date>.json`, holding everything the archive holds and nothing it can derive:
+One file, `shelf-<date>.json`, holding what the archive holds - every page, or only the pages picked for
+the file - and nothing it can derive:
 
 ```json
 {
@@ -300,7 +301,8 @@ others mean.
 the worker answers one slice at a time: a header, then runs of entries separated by commas, then the
 tail - so no single message has to carry a library. The fragments are designed to add up to exactly the
 file the one-piece writer would produce, and a unit test compares the two byte for byte. `count` says how
-many pages the archive held when the walk began, so a file that was cut short can be noticed.
+many pages the walk covers - the whole archive, or just the pages picked for the file - so a file that
+was cut short can be noticed.
 
 ### Limits of a transfer, stated
 

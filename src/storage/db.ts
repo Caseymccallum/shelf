@@ -352,15 +352,42 @@ export async function archiveStats(): Promise<StatsSummary> {
  *
  * A page is read here in one piece - record, HTML and text - because that is what a file needs, and
  * because reading them together is what makes an export a page at a time rather than a full scan.
+ *
+ * With `only`, the walk is over the caller's ids instead of the whole archive: the same slice
+ * arithmetic, the same "advance past what could not be written" rule, and `total` is the length of
+ * the list asked for. A page that vanished between being picked and being exported is walked over
+ * exactly like a row whose content is missing, and the shortfall is visible to the caller.
  */
 export async function exportSlice(
   limit: number,
   offset: number,
+  only?: readonly string[],
 ): Promise<{ entries: ArchiveEntry[]; total: number; nextOffset: number }> {
   const db = await openArchive();
   try {
     const pagesTx = db.transaction(STORE_PAGES, 'readonly');
     const store = pagesTx.objectStore(STORE_PAGES);
+
+    if (only !== undefined) {
+      const wanted = only.slice(offset, offset + limit);
+      const entries: ArchiveEntry[] = [];
+      for (const id of wanted) {
+        // Each read gets its own transaction: between awaits a transaction is over, so holding one
+        // open across the walk would be holding nothing. The pages are read one at a time anyway -
+        // that is what a slice is.
+        const row = await fromRequest<PageRow | undefined>(
+          db.transaction(STORE_PAGES, 'readonly').objectStore(STORE_PAGES).get(id),
+        );
+        if (row === undefined) continue;
+        const stored = await fromRequest<PageContent | undefined>(
+          db.transaction(STORE_CONTENT, 'readonly').objectStore(STORE_CONTENT).get(id),
+        );
+        if (stored === undefined) continue;
+        entries.push({ page: toSavedPage(row), html: stored.html, text: row.text });
+      }
+      return { entries, total: only.length, nextOffset: Math.min(offset + wanted.length, only.length) };
+    }
+
     const total = await fromRequest(store.count());
     const rows: PageRow[] = [];
 

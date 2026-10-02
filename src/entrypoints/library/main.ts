@@ -16,7 +16,9 @@ import {
   type StatsResponse,
 } from '../../shared/messages';
 import { formatBytes, formatCount } from '../../ui/format';
+import type { SavedPage } from '../../core/types';
 import { emptyRow, renderRow } from './rows';
+import { createSelection } from './selection';
 import { downloadArchive, importArchive } from './transfer';
 import '../../ui/theme.css';
 import './style.css';
@@ -32,6 +34,9 @@ const transfer = requireElement<HTMLParagraphElement>('#transfer');
 const exportButton = requireElement<HTMLButtonElement>('#export');
 const importButton = requireElement<HTMLButtonElement>('#import');
 const importFile = requireElement<HTMLInputElement>('#import-file');
+const exportSelectedButton = requireElement<HTMLButtonElement>('#export-selected');
+const pickBar = requireElement<HTMLLabelElement>('#pick-bar');
+const selectAll = requireElement<HTMLInputElement>('#select-all');
 
 const NOTHING_SAVED =
   'Nothing saved yet. Open a page and click Shelf in your toolbar — the page is saved into this browser, never to a server.';
@@ -39,6 +44,29 @@ const NOTHING_SAVED =
 /** Debounce, so typing eight characters asks the archive once instead of eight times. */
 const SEARCH_DELAY_MS = 120;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * What the reader has picked, and what the screen is currently showing.
+ *
+ * A pick outlives the row it was made on - a search that hides a page does not unpick it - so the
+ * selection is kept here and the rows are just where it is edited. `shown` is what the select-all
+ * box answers for: the rows on screen, not the whole archive.
+ */
+const selection = createSelection(() => updatePickControls());
+let shown: SavedPage[] = [];
+
+/** Keeps the pick controls true: the count on the button, and what select-all should show. */
+function updatePickControls(): void {
+  const picked = selection.count();
+  exportSelectedButton.hidden = picked === 0;
+  exportSelectedButton.textContent = `Export selected (${picked})`;
+  pickBar.hidden = shown.length === 0;
+
+  const allShownPicked = shown.length > 0 && shown.every((page) => selection.has(page.id));
+  const someShownPicked = shown.some((page) => selection.has(page.id));
+  selectAll.checked = allShownPicked;
+  selectAll.indeterminate = someShownPicked && !allShownPicked;
+}
 
 /** Draws the whole screen: the summary above, and the list below. */
 export async function refreshAll(): Promise<void> {
@@ -50,21 +78,25 @@ export async function refreshAll(): Promise<void> {
   if (query === '') {
     const list = (await ask({ type: MSG_LIST, limit: 100 })) as ListResponse;
     note.textContent = '';
+    shown = list.pages;
     results.replaceChildren(
       ...(list.pages.length === 0
         ? [emptyRow(NOTHING_SAVED)]
-        : list.pages.map((page) => renderRow(page, '', () => void refreshAll()))),
+        : list.pages.map((page) => renderRow(page, '', () => void refreshAll(), selection))),
     );
+    updatePickControls();
     return;
   }
 
   const response = (await ask({ type: MSG_SEARCH, query, limit: 100 })) as SearchResponse;
   note.textContent = response.note ?? `${response.hits.length} of ${formatCount(count)}`;
+  shown = response.hits.map((hit) => hit.page);
   results.replaceChildren(
     ...(response.hits.length === 0
       ? [emptyRow(NOTHING_SAVED)]
-      : response.hits.map((hit) => renderRow(hit.page, hit.snippet, () => void refreshAll()))),
+      : response.hits.map((hit) => renderRow(hit.page, hit.snippet, () => void refreshAll(), selection))),
   );
+  updatePickControls();
 }
 
 queryInput.addEventListener('input', () => {
@@ -101,7 +133,17 @@ async function runTransfer(button: HTMLButtonElement, action: () => Promise<stri
   }
 }
 
-exportButton.addEventListener('click', () => void runTransfer(exportButton, downloadArchive));
+exportButton.addEventListener('click', () => void runTransfer(exportButton, () => downloadArchive()));
+
+// What the reader picked goes out the same way - fewer pages, the same kind of file.
+exportSelectedButton.addEventListener('click', () =>
+  void runTransfer(exportSelectedButton, () => downloadArchive(selection.ids())),
+);
+
+// Select-all answers for the rows on screen only. Picks made under another search stay picked.
+selectAll.addEventListener('change', () => {
+  for (const page of shown) selection.toggle(page.id, selectAll.checked, page.savedAt);
+});
 
 // The file input is the control that can do this; the button is what a person sees.
 importButton.addEventListener('click', () => importFile.click());

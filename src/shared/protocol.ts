@@ -105,6 +105,14 @@ export interface ExportRequest {
   /** Where in the archive to start; the caller walks it one batch at a time. */
   offset?: number;
   limit?: number;
+  /**
+   * Export just these pages, by id, in the order given. Absent means the whole archive.
+   *
+   * This is a request about *which* pages, not a change to what an export is: a selected export is
+   * the same document, written by the same fragments, and an import of it needs no special case.
+   * The order is the caller's - the library passes newest first, as the whole-archive walk does.
+   */
+  only?: string[];
 }
 
 export interface ExportResponse {

@@ -131,9 +131,15 @@ async function saveActiveTab(): Promise<ShelfResponse> {
  *
  * The worker keeps nothing between batches - it holds no state by design - so the caller names the
  * offset it wants each time. A batch that fails is then simply a batch that can be asked for again.
+ * An export narrowed to `only` some pages is walked the same way: the ids name the archive to walk,
+ * and every batch carries that same list, because no batch may remember another's.
  */
-async function exportBatch(offset: number, limit: number): Promise<ShelfResponse> {
-  const { entries, total, nextOffset } = await exportSlice(limit, offset);
+async function exportBatch(
+  offset: number,
+  limit: number,
+  only: readonly string[] | undefined,
+): Promise<ShelfResponse> {
+  const { entries, total, nextOffset } = await exportSlice(limit, offset, only);
 
   return {
     type: MSG_EXPORT,
@@ -214,7 +220,7 @@ async function handle(request: ShelfRequest): Promise<ShelfResponse> {
       return { type: MSG_STATS, stats: await archiveStats() };
 
     case MSG_EXPORT:
-      return exportBatch(request.offset ?? 0, request.limit ?? TRANSFER_BATCH_SIZE);
+      return exportBatch(request.offset ?? 0, request.limit ?? TRANSFER_BATCH_SIZE, request.only);
 
     case MSG_IMPORT:
       return importBatch(request.entries);

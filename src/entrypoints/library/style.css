@@ -94,3 +94,31 @@
   font-size: 12px;
   color: var(--poor);
 }
+
+/*
+ * The picks: a checkbox in each row, and the one above the list that answers for every row shown.
+ * The checkbox is centred against the title line rather than sitting on its baseline, because a box
+ * on a text baseline is the wrong box for no reason.
+ */
+.pick {
+  margin: 0;
+  align-self: center;
+}
+
+.pick-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.pick-bar input {
+  margin: 0;
+}
+
+/* A display rule beats the user-agent's `[hidden]`, so the hiding is restated to stay in charge. */
+[hidden] {
+  display: none;
+}

@@ -201,3 +201,29 @@ test('refuses a JSON file that is not a Shelf export, and leaves the archive as 
   await expect(shelf.library.locator('#stats')).toHaveText(/^3 pages · /);
   expect((await shelf.stats()).count).toBe(3);
 });
+
+test('an export of just the picked pages holds just those pages', async () => {
+  // Picked through the row's checkbox, the way a reader taking one page with them would.
+  const row = shelf.library.locator('#results li.result', { hasText: 'The next page (edited)' });
+  await row.getByRole('checkbox').check();
+  await expect(shelf.library.locator('#export-selected')).toHaveText('Export selected (1)');
+
+  const [download] = await Promise.all([
+    shelf.library.waitForEvent('download'),
+    shelf.library.locator('#export-selected').click(),
+  ]);
+  const path = join(downloads, 'picked.json');
+  await download.saveAs(path);
+  const picked = JSON.parse(readFileSync(path, 'utf8')) as ExportedFile;
+
+  // The same file shape as an export of everything - the envelope's count and the pages agree that
+  // this one holds a single page, and it is the page that was picked.
+  expect(picked.kind).toBe('shelf-export');
+  expect(picked.exportFormat).toBe(1);
+  expect(picked.count).toBe(1);
+  expect(picked.pages.map((entry) => entry.page.title)).toEqual(['The next page (edited)']);
+  await expect(shelf.library.locator('#transfer')).toContainText('Exported 1 page to');
+
+  // And the pick survives the trip: the row is still picked, so an export can be repeated.
+  await expect(row.getByRole('checkbox')).toBeChecked();
+});

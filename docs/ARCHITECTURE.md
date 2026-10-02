@@ -258,6 +258,23 @@ as a limit in the format document instead of being discovered by whoever hits it
 same path a save takes, which is the point: "the index agrees with the pages" has one implementation, and
 it is the one that already has tests.
 
+### 16. A picked export is the same file, with fewer pages in it
+
+*Chosen:* exporting just the pages a reader ticked is the export walk narrowed to some ids - the same
+fragments, the same envelope, the same `EXPORT_FORMAT` - so every Shelf that can read an export can read
+this one, and the importer grows no new case. The pick lives in the library page, not the worker: which
+pages a reader wants is a fact about their visit, not about the archive, so nothing is written down and
+closing the library forgets it. Each batch names the ids again, because the worker remembers nothing
+between batches by design - a batch that failed is still just a batch that can be asked for again.
+
+*Rejected:* a second message type or a narrower `kind` for partial files. Two doors into the same room,
+and every reader of the format would grow a case for a thing that is not different in any way that
+matters.
+
+*Cost:* the ids ride every batch, so a pick of a thousand pages is a thousand ids per message. The batch
+size still bounds the entries, and this is the size of what a person ticked - a pick is not how one walks
+a whole archive.
+
 ## How a change is verified
 
 ```bash

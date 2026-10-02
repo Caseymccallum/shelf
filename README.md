@@ -7,8 +7,9 @@ your machine, not on a server - and makes everything you have saved searchable i
   not survive a copy: the rendered DOM, the stylesheets, the images.
 - **Instant local search.** Full text over everything you have saved, ranked, offline.
 - **Read it offline.** Archived pages open in a sandboxed reader: no scripts run, nothing is fetched.
-- **Yours.** No account, no sync service, no telemetry. The whole archive exports as one JSON file, and
-  importing that file back is idempotent: the same file twice is the same library, not two.
+- **Yours.** No account, no sync service, no telemetry. The whole archive exports as one JSON file - or
+  just the pages you tick - and importing that file back is idempotent: the same file twice is the same
+  library, not two.
 - **Pocket refugees welcome.** Pocket exports, browser bookmarks and saved pages (SingleFile) all
   import. Bookmarks and Pocket links come in as exactly what they are - addresses, with their titles
   and tags, marked "the page itself was not in that file" - and saved pages come in as full pages,

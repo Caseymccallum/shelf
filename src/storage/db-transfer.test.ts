@@ -130,6 +130,58 @@ describe('exportSlice', () => {
   });
 });
 
+describe('exportSlice narrowed to some pages', () => {
+  beforeEach(clearArchive);
+
+  test('walks just the pages asked for, in the order asked for', async () => {
+    await save('one', 'alpha');
+    await save('two', 'beta');
+    await save('three', 'gamma');
+
+    const slice = await exportSlice(10, 0, ['one', 'three']);
+    expect(slice.entries.map((item) => item.page.id)).toEqual(['one', 'three']);
+    // The envelope's count is the pages asked for, not the pages in the archive.
+    expect(slice.total).toBe(2);
+    expect(slice.nextOffset).toBe(2);
+  });
+
+  test('slices the picked pages the same way the whole walk does, however small the slices are', async () => {
+    await save('one', 'alpha');
+    await save('two', 'beta');
+    await save('three', 'gamma');
+
+    const walked: string[] = [];
+    let offset = 0;
+    for (;;) {
+      const slice = await exportSlice(1, offset, ['three', 'one']);
+      walked.push(...slice.entries.map((item) => item.page.id));
+      offset = slice.nextOffset;
+      if (offset >= slice.total) break;
+    }
+
+    expect(walked).toEqual(['three', 'one']);
+  });
+
+  test('walks over a picked page that is gone, so one missing page cannot stall the caller', async () => {
+    await save('one', 'alpha');
+
+    const slice = await exportSlice(10, 0, ['vanished', 'one']);
+    expect(slice.entries.map((item) => item.page.id)).toEqual(['one']);
+    // The offset advanced past the page that no longer exists, exactly as it does past a row whose
+    // content is missing in the whole-archive walk.
+    expect(slice.nextOffset).toBe(2);
+    expect(slice.total).toBe(2);
+  });
+
+  test('is empty when nothing was picked, and says so rather than failing', async () => {
+    await save('one', 'alpha');
+    const slice = await exportSlice(10, 0, []);
+    expect(slice.entries).toEqual([]);
+    expect(slice.total).toBe(0);
+    expect(slice.nextOffset).toBe(0);
+  });
+});
+
 describe('importPages', () => {
   beforeEach(clearArchive);
 

@@ -2,7 +2,9 @@
  * Rendering one archive row, and the two-step delete that belongs to it.
  *
  * Kept apart from the wiring so the interesting part - what a reader sees for a saved page, and how
- * hard it is to delete one by accident - can be read without following message passing.
+ * hard it is to delete one by accident - can be read without following message passing. The pick
+ * checkbox belongs to the row too: a row is where a reader says "this one", and it is also where a
+ * page is deleted, so it is where a pick is dropped again.
  *
  * Every value a page contributes (title, address, snippet, warning) came from a page nobody here
  * wrote, so it reaches the document only through `textContent`.
@@ -11,6 +13,7 @@
 import { MSG_DELETE, ask } from '../../shared/messages';
 import type { SavedPage } from '../../core/types';
 import { domainOf, formatBytes, formatDate } from '../../ui/format';
+import type { Selection } from './selection';
 
 /** Opens one saved page in the reader. */
 export function openPage(id: string): void {
@@ -23,7 +26,7 @@ export function openPage(id: string): void {
  * Deletion is two clicks with the second one labelled, because an archive is the kind of thing people
  * regret losing and one stray click should not be able to do it.
  */
-function confirmDelete(page: SavedPage, onChanged: () => void): HTMLElement {
+function confirmDelete(page: SavedPage, onChanged: () => void, selection: Selection): HTMLElement {
   const step = document.createElement('span');
   step.className = 'delete-step';
 
@@ -37,6 +40,8 @@ function confirmDelete(page: SavedPage, onChanged: () => void): HTMLElement {
   yes.addEventListener('click', () => {
     void (async () => {
       await ask({ type: MSG_DELETE, id: page.id });
+      // A page that is gone cannot be picked: dropped here rather than left to trip over later.
+      selection.forget(page.id);
       onChanged();
     })();
   });
@@ -53,12 +58,28 @@ function confirmDelete(page: SavedPage, onChanged: () => void): HTMLElement {
 }
 
 /** One row: what it is, where it came from, when it was saved, and the line that matched. */
-export function renderRow(page: SavedPage, snippet: string, onChanged: () => void): HTMLLIElement {
+export function renderRow(
+  page: SavedPage,
+  snippet: string,
+  onChanged: () => void,
+  selection: Selection,
+): HTMLLIElement {
   const item = document.createElement('li');
   item.className = 'result';
 
   const top = document.createElement('div');
   top.className = 'result-top';
+
+  // The pick is the reader's "this one" for a later export. Its name carries the page's title so a
+  // screen reader says which page the checkbox is about.
+  const pick = document.createElement('input');
+  pick.type = 'checkbox';
+  pick.className = 'pick';
+  pick.checked = selection.has(page.id);
+  pick.setAttribute('aria-label', `Select ${page.title}`);
+  pick.addEventListener('change', () => {
+    selection.toggle(page.id, pick.checked, page.savedAt);
+  });
 
   const title = document.createElement('button');
   title.type = 'button';
@@ -70,7 +91,7 @@ export function renderRow(page: SavedPage, snippet: string, onChanged: () => voi
   meta.className = 'result-meta';
   meta.textContent = `${domainOf(page.url)} · ${formatDate(page.savedAt)} · ${formatBytes(page.bytes)}`;
 
-  top.append(title, meta);
+  top.append(pick, title, meta);
   item.append(top);
 
   if (snippet !== '') {
@@ -101,7 +122,9 @@ export function renderRow(page: SavedPage, snippet: string, onChanged: () => voi
   remove.type = 'button';
   remove.className = 'danger';
   remove.textContent = 'Delete';
-  remove.addEventListener('click', () => actions.replaceChildren(confirmDelete(page, onChanged)));
+  remove.addEventListener('click', () =>
+    actions.replaceChildren(confirmDelete(page, onChanged, selection)),
+  );
 
   actions.append(read, remove);
   item.append(actions);

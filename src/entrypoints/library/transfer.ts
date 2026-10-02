@@ -52,11 +52,12 @@ function saveBlob(blob: Blob, filename: string): void {
 /**
  * Builds the export file and hands it to the browser.
  *
- * The whole archive is walked here rather than in the worker, so that no single message has to carry
+ * The archive is walked here rather than in the worker, so that no single message has to carry
  * a library. The fragments are designed to add up to exactly the file `core/export.ts` writes in one
- * piece - a header, then each run of entries with a comma between them, then the tail.
+ * piece - a header, then each run of entries with a comma between them, then the tail. When the walk
+ * is narrowed to some pages, the pieces assemble the same way; there are just fewer of them.
  */
-export async function downloadArchive(): Promise<string> {
+export async function downloadArchive(only?: readonly string[]): Promise<string> {
   const pieces: string[] = [];
   let offset = 0;
   let total = 0;
@@ -65,7 +66,14 @@ export async function downloadArchive(): Promise<string> {
   let firstChunk = true;
 
   for (;;) {
-    const batch = (await ask({ type: MSG_EXPORT, offset, limit: TRANSFER_BATCH_SIZE })) as ExportResponse;
+    const batch = (await ask({
+      type: MSG_EXPORT,
+      offset,
+      limit: TRANSFER_BATCH_SIZE,
+      // The same list rides every batch: the worker holds no state between them by design, so each
+      // one is told which archive to walk.
+      only: only === undefined ? undefined : [...only],
+    })) as ExportResponse;
     filename = batch.filename;
     total = batch.total;
     if (batch.header !== '') pieces.push(batch.header);
