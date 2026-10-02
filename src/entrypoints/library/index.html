@@ -35,7 +35,12 @@
       <p id="note" class="muted" role="status" aria-live="polite"></p>
       <ul id="results" class="results"></ul>
 
-      <input id="import-file" class="visually-hidden" type="file" accept="application/json,.json" />
+      <input
+        id="import-file"
+        class="visually-hidden"
+        type="file"
+        accept=".json,.csv,.html,application/json,text/csv,text/html"
+      />
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

@@ -231,6 +231,25 @@ is a claim; the content is the fact - and this is the same rule a save follows, 
 disagree with the pages it came from, so the importer rebuilds it by tokenizing the stored text. That is
 what makes the promise "an export is the archive" true rather than approximate.
 
+### 15. Other people's files come in through the same door, as what they honestly are
+
+*Chosen:* Pocket exports, browser bookmarks and saved pages (SingleFile) all parse in `core/import.ts`
+into the same entries the export format produces, and are written by the same worker in the same batches -
+so content-derived identity, the rebuilt index and idempotent re-import hold for a file Shelf did not
+write. A saved page is content, and is cleaned exactly as a live capture is (nothing executable survives,
+URLs resolved before the page's base goes with it). A Pocket export and a bookmarks file hold addresses,
+not pages; those become link-only records whose document is a small stub saying so, and whose warning
+travels with the record into the library, the reader and any later export.
+
+*Rejected:* fetching the pages a link points at during import. The import would silently phone home to
+every site in a user's old library, from a file they have not read yet - the one thing Shelf's reader
+offers only as an explicit, per-page choice.
+
+*Rejected:* dropping Pocket links and bookmarks as "not real pages". The address is the one fact the file
+genuinely knows, and search that can find the link is worth more than a library that refuses it. The stub
+is what keeps that honest: the record claims a link, and says in its own document that the page itself
+was not in the file.
+
 *Cost:* the whole archive passes through the library page's memory on its way to a file or out of one, so
 the export is the one operation whose ceiling is the browser rather than the archive. It is written down
 as a limit in the format document instead of being discovered by whoever hits it.
@@ -261,9 +280,6 @@ npm run verify     # compile + test + build: what should pass before a commit
 
 ## What is deliberately not built yet
 
-- **Importers for other people's files** (Pocket exports, browser bookmarks, SingleFile). What each needs
-  is a reader in front of the same write path - the transfer format and the import that rebuilds the index
-  already exist, and they take Shelf's own files.
 - **A streaming export.** The file is assembled in the library page, so its ceiling is what a browser will
   hold rather than what the archive can. Writing a file incrementally is not something a page can do
   without a permission Shelf does not want.

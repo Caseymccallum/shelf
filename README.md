@@ -9,8 +9,10 @@ your machine, not on a server - and makes everything you have saved searchable i
 - **Read it offline.** Archived pages open in a sandboxed reader: no scripts run, nothing is fetched.
 - **Yours.** No account, no sync service, no telemetry. The whole archive exports as one JSON file, and
   importing that file back is idempotent: the same file twice is the same library, not two.
-- **Pocket refugees welcome.** Importers for other people's formats (Pocket exports, browser bookmarks,
-  SingleFile) are the next piece of work; today the importer takes the files Shelf wrote.
+- **Pocket refugees welcome.** Pocket exports, browser bookmarks and saved pages (SingleFile) all
+  import. Bookmarks and Pocket links come in as exactly what they are - addresses, with their titles
+  and tags, marked "the page itself was not in that file" - and saved pages come in as full pages,
+  cleaned the same way a live save is.
 
 ## Status
 
