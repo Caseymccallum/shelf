@@ -50,6 +50,13 @@ The install prompt is the first thing a cautious person reads, so the list is ke
   (`content_security_policy`: `script-src 'self'; object-src 'none'`), and a test asserts it.
 - The archive lives in the browser's IndexedDB. It leaves only through an export the person makes.
 
+## Screenshots
+
+`node scripts/screenshots.mjs` (after `npm run build`) shoots the real extension in a real browser:
+the library, the reader and the popup, in light and dark, into `.tmp/screenshots/`. The pages are
+seeded through the same import message the product uses, so what the store sees is the product -
+1280x800 for the pages, the popup at its own size.
+
 ## Category
 
 Productivity

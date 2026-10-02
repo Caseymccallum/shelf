@@ -1,3 +1,7 @@
+/*
+ * The reader: a page on a desk. The bar is the bookplate - what this is and where it came from -
+ * and everything below it is the page itself, kept as it looked.
+ */
 .reader {
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -6,11 +10,11 @@
 
 .bar {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line);
+  padding: 15px 22px;
+  border-bottom: 2px solid var(--ink);
   background: var(--surface);
 }
 
@@ -19,12 +23,16 @@
 }
 
 .bar-title h1 {
-  font-size: 17px;
+  font-size: 19px;
   overflow-wrap: anywhere;
 }
 
 .bar-title p {
-  font-size: 12px;
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
 
@@ -35,21 +43,29 @@
 }
 
 .notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   margin: 0;
-  padding: 10px 20px;
+  padding: 11px 22px;
   font-size: 13px;
   color: var(--fair);
-  background: var(--surface-sunken);
+  background: var(--fair-wash);
   border-bottom: 1px solid var(--line);
 }
 
 .notes .badge {
-  margin-right: 8px;
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
 }
 
 .frame-wrap {
   min-height: 0;
-  background: var(--surface-sunken);
+  /* The desk the page lies on: a shade darker than the bar, so the page edge is visible. */
+  background: var(--paper-sunken);
+  padding: 0;
 }
 
 iframe {

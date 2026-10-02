@@ -1,29 +1,52 @@
 /*
- * The popup is one action and one line of feedback, so it is sized to that and nothing more.
+ * The popup is one action and one line of feedback, so it is set like a date-due slip: a small
+ * piece of the same paper, one strong action, and the truth written plainly beneath it.
  */
 body {
-  width: 320px;
+  width: 330px;
 }
 
 .popup {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 13px;
+  padding: 18px;
+  background: var(--surface);
+}
+
+.head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 11px;
+  border-bottom: 2px solid var(--ink);
 }
 
 .head h1 {
-  font-size: 17px;
+  font-size: 20px;
+  letter-spacing: -0.02em;
 }
 
 .head p {
-  font-size: 13px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--ink-muted);
 }
 
 #save {
   width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
 }
 
-.status a {
+.status {
+  min-height: 2.4em;
+  font-size: 13.5px;
+}
+
+.status a,
+.status .link-button {
   font-weight: 600;
 }
 
@@ -32,10 +55,12 @@ body {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
+  padding-top: 11px;
   border-top: 1px solid var(--line);
 }
 
 #summary {
-  font-size: 13px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }

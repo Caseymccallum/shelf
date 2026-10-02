@@ -6,6 +6,15 @@ a version.
 
 ## [Unreleased]
 
+### Changed
+
+- **A design system, and the three surfaces rebuilt on it.** Warm paper, sepia ink, serif titles,
+  hairline rules: the library reads like a catalogue, the popup like a date-due slip, and dark mode
+  is ink rather than a grey inversion. All of it lives in `src/ui/theme.css` as named tokens - one
+  source for colour, type, shape and motion, still self-contained (no web fonts, no remote images).
+  Nothing about how the surfaces behave changed; `scripts/screenshots.mjs` shoots all three in both
+  schemes, and those images are the store listing's screenshot set.
+
 ### Added
 
 - **Export just the pages picked.** A checkbox on every row, an `Export selected (N)` button that
