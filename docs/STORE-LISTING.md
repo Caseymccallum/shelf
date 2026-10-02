@@ -64,3 +64,46 @@ Productivity
 ## Language
 
 English
+
+## Store assets
+
+`node scripts/make-icons.mjs` draws these as SVG and rasterises them through Playwright - the same
+"icons are code" rule as the toolbar mark - in the design system's paper and ink:
+
+- `store-assets/store-logo-300.png` - the store logo (300x300, full bleed paper ground).
+- `store-assets/promo-tile-440x280.png` - the small promo tile: the mark, the name in the display
+  serif, the promise in letterspaced small caps.
+
+## Per store
+
+### Chrome Web Store
+
+- Package: `npm run zip` -> `.output/shelf-0.1.0-chrome.zip`.
+- Every field above maps 1:1 to the CWS listing form. Screenshots: the `.tmp/screenshots/` set,
+  1280x800, as shot by `node scripts/screenshots.mjs`.
+- Privacy practices form: "no data collected", backed by the Privacy section above.
+
+### Microsoft Edge Add-ons (Partner Center)
+
+- Registration: **free** - "There is no registration fee for submitting extensions to the Microsoft
+  Edge program" (Microsoft Learn). Individual account.
+- Package: the same zip as Chrome - Edge is Chromium. Verified by the suite itself:
+  `E2E_CHANNEL=msedge npm run test:e2e` runs all 38 tests against installed Edge.
+- Fields: product name, summary, detailed description (the copy above), category (Productivity),
+  store logo + promo tile (Store assets above), screenshots 1280x800.
+- Permissions justifications: the Permission justifications section verbatim.
+- Remote code: **"No"** - the CSP forbids it and a test asserts the CSP.
+- Data usage: "the extension does not collect, transmit, or share any data".
+
+### Firefox (AMO)
+
+- Registration: **free** (account, upload, validator, signing - no fee at any step).
+- Package: `npm run zip:firefox` -> `.output/shelf-0.1.0-firefox.zip`, plus the sources zip WXT
+  builds alongside it (`shelf-0.1.0-sources.zip`) - AMO reviewers want the source that produced the
+  bundle. Build steps for the reviewer notes: `npm ci && npm run zip:firefox`.
+- Validation gate before upload: `npm run lint:amo` (Mozilla's own addons-linter, also a CI job) -
+  currently 0 errors, 0 warnings, 0 notices.
+- The manifest declares `data_collection_permissions: { required: ['none'] }` - mandatory for new
+  AMO submissions since November 2025 - and `gecko.id`, `strict_min_version` 140 desktop / 142
+  Android, the versions where that declaration is enforced.
+- License: MIT (matches `package.json`). Support: the repository's issue tracker.

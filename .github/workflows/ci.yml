@@ -47,3 +47,19 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end
         run: npm run test:e2e
+
+  # Mozilla's own validator over the Firefox build - the exact gate an AMO submission passes or
+  # fails, run here first. It is a separate job because it is a claim about a different artefact
+  # (`.output/firefox-mv3`) than the one the suites above drive.
+  lint-amo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Lint the Firefox package with AMO's validator
+        run: npm run lint:amo

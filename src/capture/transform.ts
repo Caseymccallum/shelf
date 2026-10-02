@@ -142,13 +142,21 @@ export function flattenShadowRoots(
     const shadow = live.shadowRoot;
     if (copied === undefined || shadow === null) return;
 
+    // The shadow's nodes are cloned into the copy's document rather than round-tripped through
+    // `innerHTML`. A deep clone lands exactly what was there; serialization re-parses and can
+    // quietly repair what it finds. It also keeps the promise AMO's linter checks mechanically:
+    // no HTML string is ever parsed in the capture that runs inside a page.
     const shadowCopy = doc.createElement('div');
-    shadowCopy.innerHTML = shadow.innerHTML;
+    for (const child of Array.from(shadow.childNodes)) {
+      shadowCopy.appendChild(doc.importNode(child, true));
+    }
     flattenShadowRoots(shadow, shadowCopy, doc);
 
     const wrapper = doc.createElement('div');
     wrapper.setAttribute('data-shelf-shadow-root', live.tagName.toLowerCase());
-    wrapper.innerHTML = shadowCopy.innerHTML;
+    for (const child of Array.from(shadowCopy.childNodes)) {
+      wrapper.appendChild(child);
+    }
     copied.appendChild(wrapper);
   });
 }

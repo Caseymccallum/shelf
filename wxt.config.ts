@@ -53,10 +53,16 @@ export default defineConfig({
           browser_specific_settings: {
             gecko: {
               id: 'shelf@caseymccallum.dev',
-              strict_min_version: '115.0',
+              // 140 because `data_collection_permissions` is honoured from 140 on desktop, and every
+              // Firefox still in support - current and ESR - is past it. A lower floor would declare
+              // a privacy posture that older versions silently drop.
+              strict_min_version: '140.0',
               // Explicitly declare that nothing is collected (Firefox 140+ manifest key).
               data_collection_permissions: { required: ['none'] },
             },
+            // Android enforces the same declaration from 142. Each floor sits where the privacy
+            // posture is real on that platform, which is also where AMO's linter stops warning.
+            gecko_android: { strict_min_version: '142.0' },
           },
         }
       : {}),

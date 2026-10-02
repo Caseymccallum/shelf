@@ -91,8 +91,9 @@ export async function launchShelf(): Promise<Shelf> {
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     // `channel: 'chromium'` matters: it selects the full browser, which supports extensions, rather
-    // than the headless shell, which does not.
-    channel: 'chromium',
+    // than the headless shell, which does not. `E2E_CHANNEL=msedge` runs the same suite against
+    // Edge instead - the same engine, and a store Shelf ships to.
+    channel: (process.env.E2E_CHANNEL ?? 'chromium') as 'chromium' | 'msedge',
     headless: true,
     viewport: { width: 1100, height: 800 },
     args: [
