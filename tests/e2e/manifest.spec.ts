@@ -20,7 +20,8 @@ interface Manifest {
   host_permissions?: string[];
   optional_host_permissions?: string[];
   content_scripts?: unknown[];
-  action?: { default_title?: string };
+  icons?: Record<string, string>;
+  action?: { default_title?: string; default_icon?: Record<string, string> };
   content_security_policy?: { extension_pages?: string };
   [key: string]: unknown;
 }
@@ -61,5 +62,22 @@ test.describe('the extension that ships', () => {
     const harnessed = readManifest(E2E_EXTENSION_DIR);
     expect(harnessed.host_permissions).toEqual([FIXTURE_HOST_PERMISSION]);
     expect(harnessed.permissions).toEqual(shipped.permissions);
+  });
+
+  test('wears its own face: the icons are declared, and the files are in the build', () => {
+    // A build that references icons it did not ship shows a browser's grey placeholder in the
+    // toolbar - the first thing anyone sees of Shelf. The manifest's claim and the files on disk
+    // are checked together, because either one alone can be true while the other is not.
+    const manifest = readManifest(PRODUCTION_EXTENSION_DIR);
+    // Sorted as strings on both sides: keys come back from JSON in no order a person should trust.
+    const expected = ['16', '32', '48', '128'].sort();
+    expect(Object.keys(manifest.icons ?? {}).sort()).toEqual(expected);
+    expect(Object.keys(manifest.action?.default_icon ?? {}).sort()).toEqual(expected);
+    for (const size of expected) {
+      expect(manifest.icons?.[size]).toBe(`icons/icon-${size}.png`);
+      const icon = readFileSync(join(PRODUCTION_EXTENSION_DIR, `icons/icon-${size}.png`));
+      // A PNG's first eight bytes are its signature: the file exists and is a PNG, not a stub.
+      expect(icon.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
   });
 });

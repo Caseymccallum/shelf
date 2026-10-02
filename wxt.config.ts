@@ -25,8 +25,23 @@ export default defineConfig({
     //                      storage pressure would break it. This is the only permission here that
     //                      is not about a single click.
     permissions: ['activeTab', 'scripting', 'unlimitedStorage'],
+    // The mark, at every size the browser and the stores ask for. Generated from
+    // `scripts/make-icons.mjs`, which draws them as SVG and rasterises through Playwright - so the
+    // icons are code in this repository rather than binaries nobody can redraw.
+    icons: {
+      16: 'icons/icon-16.png',
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
+    },
     action: {
       default_title: 'Save this page to Shelf',
+      default_icon: {
+        16: 'icons/icon-16.png',
+        32: 'icons/icon-32.png',
+        48: 'icons/icon-48.png',
+        128: 'icons/icon-128.png',
+      },
     },
     content_security_policy: {
       // Archived pages are rendered by an extension page, so the extension's own CSP applies to the
