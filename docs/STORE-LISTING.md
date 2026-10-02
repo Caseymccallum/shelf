@@ -45,6 +45,8 @@ The install prompt is the first thing a cautious person reads, so the list is ke
 
 ## Privacy
 
+The linkable policy is [`docs/PRIVACY.md`](PRIVACY.md); the short of it:
+
 - Collects nothing. Sends nothing. There is no server to send it to.
 - The extension pages themselves are forbidden from reaching the network
   (`content_security_policy`: `script-src 'self'; object-src 'none'`), and a test asserts it.
@@ -107,3 +109,23 @@ English
   AMO submissions since November 2025 - and `gecko.id`, `strict_min_version` 140 desktop / 142
   Android, the versions where that declaration is enforced.
 - License: MIT (matches `package.json`). Support: the repository's issue tracker.
+
+## Submission checklist
+
+What is already done, and what is left for hands to do. Items 1-2 need no money and no wait.
+
+- [x] The packages build, lint clean and pass their suites (170 unit, 38 e2e on Chromium and Edge).
+- [x] Icons, store logo, promo tile, screenshots - all generated, all in the repository.
+- [x] The listing copy for all three stores - this file.
+- [x] A privacy policy to link to: [`docs/PRIVACY.md`](PRIVACY.md).
+- [x] A tagged release with the zips and SHA-256 sums, so a reviewer can install today.
+- [ ] **Firefox / AMO (free):** create an AMO account, submit `shelf-<v>-firefox.zip` +
+      `shelf-<v>-sources.zip`, reviewer build notes `npm ci && npm run zip:firefox`.
+- [ ] **Edge (free):** create a Partner Center account (individual), submit the Chrome zip, paste the
+      Per store > Edge fields above.
+- [ ] **Chrome ($5):** register, submit `shelf-<v>-chrome.zip`, paste the copy above, upload the
+      `.tmp/screenshots/` set.
+
+Before any upload: `node scripts/screenshots.mjs` for fresh screenshots, and `npm run verify &&
+npm run lint:amo` as the last local gate. After any code change post-v0.1.0, tag what actually
+ships - the store builds should come from a tag, not from a working tree.

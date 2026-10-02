@@ -3,6 +3,8 @@
 **Save any page. Find it forever.** Shelf keeps a complete, readable copy of the page you are on - on
 your machine, not on a server - and makes everything you have saved searchable in one place.
 
+![The library](docs/screenshots/library-light.png)
+
 - **One click.** The page you are reading is saved as it looked, including the parts that usually do
   not survive a copy: the rendered DOM, the stylesheets, the images.
 - **Instant local search.** Full text over everything you have saved, ranked, offline.
@@ -15,21 +17,34 @@ your machine, not on a server - and makes everything you have saved searchable i
   and tags, marked "the page itself was not in that file" - and saved pages come in as full pages,
   cleaned the same way a live save is.
 
+| The reader | The popup |
+| --- | --- |
+| ![The reader](docs/screenshots/viewer-light.png) | ![The popup](docs/screenshots/popup-light.png) |
+
+Dark mode is ink, not a grey inversion - the set is in [`docs/screenshots/`](docs/screenshots/)
+(light and dark, shot from the real extension by `scripts/screenshots.mjs`).
+
 ## Status
 
-Early, and deliberately so: the archive format, the capture routine and the search index are being
-built first, together with the harness that proves them (`npm test`, `npm run test:e2e`).
+v0.1.0 - the first release, and it works: capture, library, ranked search, the sandboxed reader,
+selected-export, and imports for Pocket/bookmarks/SingleFile. 170 unit tests and 38 end-to-end tests
+(the real extension, in a real browser, against a site Shelf does not own) run on every push, on
+Windows and Linux. Store listings are in progress; the store copy and per-store notes live in
+[`docs/STORE-LISTING.md`](docs/STORE-LISTING.md).
 
 ## Install
 
-Until the store listing is up, load the built extension by hand:
+The [Releases page](https://github.com/Caseymccallum/shelf/releases) has the built packages and their
+SHA-256 checksums.
 
-```bash
-npm ci
-npm run build
-```
+- **Chrome / Edge** - download `shelf-<version>-chrome.zip`, unzip it, then open `chrome://extensions`
+  (or `edge://extensions`), turn on Developer mode, and **Load unpacked** pointing at the unzipped
+  folder.
+- **Firefox** - `shelf-<version>-firefox.zip` installs permanently on Developer Edition / Nightly
+  (with `xpinstall.signatures.required` off); on release Firefox it loads temporarily via
+  `about:debugging` → This Firefox → Load Temporary Add-on.
 
-Then `chrome://extensions` → Developer mode → Load unpacked → `.output/chrome-mv3`.
+Or build it yourself: `npm ci && npm run build`, then load `.output/chrome-mv3`.
 
 ## Why it exists
 
