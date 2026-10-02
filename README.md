@@ -20,6 +20,17 @@ your machine, not on a server - and makes everything you have saved searchable i
 Early, and deliberately so: the archive format, the capture routine and the search index are being
 built first, together with the harness that proves them (`npm test`, `npm run test:e2e`).
 
+## Install
+
+Until the store listing is up, load the built extension by hand:
+
+```bash
+npm ci
+npm run build
+```
+
+Then `chrome://extensions` → Developer mode → Load unpacked → `.output/chrome-mv3`.
+
 ## Why it exists
 
 Read-it-later services die. Pocket was discontinued on 8 July 2025, after nineteen years, and took

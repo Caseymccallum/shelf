@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # `verify` is the same gate a commit is expected to pass: types, the rules, the build.
+      - name: Verify (types, the rules, the build)
+        run: npm run verify
+      - name: Install the browser the end-to-end suite drives
+        run: npx playwright install --with-deps chromium
+      # The browser facts: the real extension, in a real browser, against a site Shelf does not own.
+      # This includes the manifest spec - the permission posture of the artefact that ships.
+      - name: End-to-end
+        run: npm run test:e2e
+
+  # The same gate again on Windows. The tests are pure arithmetic over a fake IndexedDB, but paths
+  # and a build that works are not, and Shelf's users live on both platforms.
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify (types, the rules, the build)
+        run: npm run verify
+      - name: Install the browser the end-to-end suite drives
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end
+        run: npm run test:e2e
